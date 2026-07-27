@@ -5,6 +5,7 @@ const http = require("http");
 const express = require("express");
 const cors = require("cors");
 const { WebSocketServer } = require("ws");
+const { mockInfer } = require("./mockInfer");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -74,51 +75,6 @@ function publicBaseFromRequest(req) {
   }
 
   return `${proto}://${host}`.replace(/\/$/, "");
-}
-
-// stand-in until the FPGA is wired in
-function mockInfer(pixels) {
-  if (!Array.isArray(pixels) || pixels.length !== 784) {
-    throw new Error("pixels must be length 784 (28x28)");
-  }
-
-  const values = pixels.map((v) => {
-    const n = Number(v);
-    if (!Number.isFinite(n)) return 0;
-    return Math.max(0, Math.min(127, Math.round(n)));
-  });
-
-  const logits = new Array(10).fill(0);
-  for (let row = 0; row < 28; row++) {
-    for (let col = 0; col < 28; col++) {
-      const p = values[row * 28 + col];
-      if (p < 20) continue;
-      const bin = Math.min(9, Math.floor((col / 28) * 10));
-      logits[bin] += p;
-      const cx = col - 13.5;
-      const cy = row - 13.5;
-      if (cx * cx + cy * cy < 64) logits[bin] += p * 0.15;
-    }
-  }
-
-  const maxRaw = Math.max(...logits, 1);
-  const scaled = logits.map((x, i) =>
-    Math.round((x / maxRaw) * 1000 - 200 + (i % 3) * 7)
-  );
-
-  let digit = 0;
-  for (let i = 1; i < 10; i++) {
-    if (scaled[i] > scaled[digit]) digit = i;
-  }
-
-  return {
-    timestamp: new Date().toISOString(),
-    digit,
-    logits: scaled,
-    cycles: null,
-    source: "mock",
-    note: "mock inference (FPGA not connected yet)",
-  };
 }
 
 const api = express.Router();

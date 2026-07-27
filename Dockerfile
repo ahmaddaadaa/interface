@@ -9,7 +9,7 @@ FROM node:22-alpine
 WORKDIR /app
 COPY server/package.json server/package-lock.json ./
 RUN npm ci --omit=dev
-COPY server/index.js server/mock-data.json ./
+COPY server/index.js server/mockInfer.js server/mock-data.json ./
 COPY --from=client-build /client/dist ./public
 ENV NODE_ENV=production
 ENV PORT=3000
